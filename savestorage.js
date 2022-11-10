@@ -1,73 +1,133 @@
 /**
- * jQuery saveStorage - 23.06.2019
- * Version: 2.0.0
- * Website: https://github.com/sarkhanrajabov/saveStorage
+ * javaScript saveStorage - 11.03.2020
+ * Version: 1.0.0
+ * Website: https://github.com/sarkhanrajabov/saveStorage-js
  * Author: Sarkhan Rajabov
-**/
+ * Modified by Jeremy B. to use SessionsStorage
+ **/
 
-(function($){
-    $.fn.saveStorage = function(options){
-        'use strict';
+function saveStorage(selector, options) {
+    'use strict';
 
-        if(typeof Storage !== "undefined"){
+    if (typeof Storage !== "undefined") {
 
-            var form     = $(this),
-                key      = $(this).attr('id')+'_saveStorage',
-                defaults = {
-                    exclude: []
-                };
-
-            var opts = $.extend({}, defaults, options);
-
-            var excludeInputType = function(){
-                var inputType = '';
-
-                $.each(opts.exclude, function(k,v){
-                    inputType += 'input[type='+v+'],'
-                });
-
-                return inputType;
+        let form = document.querySelector(selector),
+            key = form.getAttribute('id') + '_saveStorage',
+            elements = form.querySelectorAll('input, textarea, select'),
+            defaults = {
+                exclude: [],
             };
 
-            form.find(':input').bind('change keyup', function () {
-                var serializeForm = form.serializeArray();
-                localStorage.setItem(key, JSON.stringify(serializeForm));
+        let extend = function (out) {
+            out = out || {};
+
+            for (let i = 1; i < arguments.length; i++) {
+                if (!arguments[i])
+                    continue;
+
+                for (let key in arguments[i]) {
+                    if (arguments[i].hasOwnProperty(key))
+                        out[key] = arguments[i][key];
+                }
+            }
+
+            return out;
+        };
+
+        let opts = extend({}, defaults, options);
+
+        let excludeInputType = function () {
+            let inputType = '';
+
+            opts.exclude.forEach(function (type) {
+                inputType += ':not([type=' + type + '])';
             });
 
-            var initApp = function(){
-                if(localStorage.getItem(key) !== null){
+            return inputType;
+        };
 
-                    var data          = JSON.parse(localStorage.getItem(key)),
-                        inputRadio    = form.find('input[type=radio]'),
-                        inputCheckbox = form.find('input[type=checkbox]');
+        let serializeArray = function () {
+            let serializeData = [];
 
-                    for(var i = 0; i < data.length; i++){
-                        form.find(':input[name='+data[i].name+']')
-                            .not(excludeInputType() + 'input[type=radio], input[type=checkbox]').val(data[i].value);
+            elements.forEach(function (el) {
+                if (el.type !== 'radio' && el.type !== 'checkbox') {
+                    serializeData.push({ name: el.name, value: el.value, type: el.type });
+                }
+                else if (el.checked) {
+                    serializeData.push({ name: el.name, value: el.value, type: el.type });
+                }
+            });
 
-                        for(var j = 0; j < inputRadio.length; j++){
-                            if(inputRadio[j].getAttribute('name') === data[i].name && inputRadio[j].getAttribute('value') === data[i].value){
-                                inputRadio[j].checked = true;
-                            }
-                        }
+            return serializeData;
+        };
 
-                        for(var k = 0; k < inputCheckbox.length; k++){
-                            if(inputCheckbox[k].getAttribute('name') === data[i].name && inputCheckbox[k].getAttribute('value') === data[i].value){
-                                inputCheckbox[k].checked = true;
+        let setSessionStorage = function () {
+            let formData = JSON.stringify(serializeArray());
+            sessionStorage.setItem(key, formData);
+        };
+
+        let initApp = function () {
+            if (sessionStorage.getItem(key) !== null) {
+
+                let data = JSON.parse(sessionStorage.getItem(key));
+
+                data.forEach(function (v) {
+
+                    if (v.type !== 'radio' && v.type !== 'checkbox') {
+                        if (form.querySelector('[name=' + escapeBrackets(v.name) + ']')) {
+                            let input = form.querySelector('[name=' + escapeBrackets(v.name) + ']' + excludeInputType());
+
+                            if (input !== null) {
+                                input.value = v.value;
                             }
                         }
                     }
-                }
-            };
+                    else {
+                        let input = form.querySelectorAll('[name=' + escapeBrackets(v.name) + ']');
 
-            form.submit(function () {
-                localStorage.removeItem(key);
+                        input.forEach(function (el) {
+                            if (el.name === v.name && el.value === v.value) {
+                                el.checked = true;
+                            }
+                        })
+                    }
+                });
+            }
+        };
+
+        function escapeBrackets(value) {
+            const escapeCharacter = '\\';
+            let escaped = value;
+            escaped = escaped.replace('[', escapeCharacter + '[');
+            escaped = escaped.replace(']', escapeCharacter + ']');
+            return escaped
+        }
+        function unescapeBrackets(value) {
+            const escapeCharacter = '\\';
+            let unescaped = value;
+            unescaped = unescaped.replace(escapeCharacter + '[', '[');
+            unescaped = unescaped.replace(escapeCharacter + ']', ']');
+            return unescaped
+        }
+
+
+        form.addEventListener('change', function () {
+            setSessionStorage();
+        });
+
+        elements.forEach(function (el) {
+            el.addEventListener('keyup', function () {
+                setSessionStorage();
             });
+        });
 
-            initApp();
-        }
-        else {
-            console.error('Sorry! No web storage support.')
-        }
-    };
-})(jQuery);
+        form.addEventListener('submit', function () {
+            sessionStorage.removeItem(key);
+        });
+
+        initApp();
+    }
+    else {
+        console.error('Sorry! No web storage support.');
+    }
+}
