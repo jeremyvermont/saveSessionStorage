@@ -53,16 +53,16 @@ function saveStorage(selector, options) {
                 if (el.type !== 'radio' && el.type !== 'checkbox') {
                     serializeData.push({ name: el.name, value: el.value, type: el.type });
                 }
-                else if (el.checked) {
-                    serializeData.push({ name: el.name, value: el.value, type: el.type });
+                else if (el.hasAttribute("checked") || el.checked) {
+                    serializeData.push({ name: el.name, value: el.value, type: el.type, checked: el.checked });
                 }
             });
-
             return serializeData;
         };
 
         let setSessionStorage = function () {
             let formData = JSON.stringify(serializeArray());
+            console.log(formData);
             sessionStorage.setItem(key, formData);
         };
 
@@ -70,6 +70,7 @@ function saveStorage(selector, options) {
             if (sessionStorage.getItem(key) !== null) {
 
                 let data = JSON.parse(sessionStorage.getItem(key));
+                console.log(data)
 
                 data.forEach(function (v) {
 
@@ -84,10 +85,9 @@ function saveStorage(selector, options) {
                     }
                     else {
                         let input = form.querySelectorAll('[name=' + escapeBrackets(v.name) + ']');
-
                         input.forEach(function (el) {
                             if (el.name === v.name && el.value === v.value) {
-                                el.checked = true;
+                                el.checked = v.checked;
                             }
                         })
                     }
@@ -98,15 +98,15 @@ function saveStorage(selector, options) {
         function escapeBrackets(value) {
             const escapeCharacter = '\\';
             let escaped = value;
-            escaped = escaped.replace('[', escapeCharacter + '[');
-            escaped = escaped.replace(']', escapeCharacter + ']');
+            escaped = escaped.replaceAll('[', escapeCharacter + '[');
+            escaped = escaped.replaceAll(']', escapeCharacter + ']');
             return escaped
         }
         function unescapeBrackets(value) {
             const escapeCharacter = '\\';
             let unescaped = value;
-            unescaped = unescaped.replace(escapeCharacter + '[', '[');
-            unescaped = unescaped.replace(escapeCharacter + ']', ']');
+            unescaped = unescaped.replaceAll(escapeCharacter + '[', '[');
+            unescaped = unescaped.replaceAll(escapeCharacter + ']', ']');
             return unescaped
         }
 
